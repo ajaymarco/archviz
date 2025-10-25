@@ -692,6 +692,7 @@
                 <span>ARCHVIZ STUDIO</span>
             </div>
             <div class="header-actions">
+                <button class="btn" onclick="addBasicWallBlock()">Add Basic Wall Block</button>
                 <button class="btn" onclick="clearAll()">Clear All</button>
                 <button class="btn btn-primary" onclick="generateModel()">▶ Generate Model</button>
             </div>
@@ -1017,6 +1018,16 @@
 
         function toggleAxes(show) {
             axesHelper.visible = show;
+        }
+
+        function addBasicWallBlock() {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const cube = new THREE.Mesh(geometry, material);
+            scene.add(cube);
+            sceneObjects.push(cube);
+            updateViewportStats();
+            updateGeometryList();
         }
 
         function updateViewportStats() {
