@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ArchViz Studio - Node-Based Architecture Modeler</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three-csg-ts@3.1.13/lib/three-csg.js"></script>
     <style>
         * {
             margin: 0;
@@ -355,6 +356,19 @@
 
         .node-param {
             margin-bottom: 10px;
+            position: relative;
+        }
+
+        .node-param .param-label {
+            margin-bottom: 0;
+        }
+
+        .node-param .port.input {
+            margin-bottom: 5px;
+        }
+
+        .node-param .param-input {
+            padding-left: 20px;
         }
 
         .node-param:last-child {
@@ -628,6 +642,13 @@
             stroke-width: 3;
             opacity: 0.6;
             filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.4));
+            transition: all 0.2s;
+        }
+
+        .connection-path.selected {
+            stroke: var(--accent-hover);
+            stroke-width: 5;
+            opacity: 1;
         }
 
         /* Scrollbar */
@@ -681,6 +702,39 @@
             border-radius: 4px;
             border-left: 2px solid var(--accent);
         }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            z-index: 1000;
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid var(--node-border);
+            border-radius: 8px;
+            padding: 8px;
+            display: none;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .context-menu-item {
+            padding: 10px 15px;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .context-menu-item:hover {
+            background: var(--accent);
+            color: var(--bg-dark);
+        }
+
+        .context-menu-icon {
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -703,28 +757,28 @@
             <div class="sidebar-section">
                 <div class="section-title">Primitives</div>
                 <div class="node-palette">
-                    <div class="palette-node" draggable="true" data-type="box">
+                    <div class="palette-node" draggable="true" data-type="box" title="Creates a box primitive.">
                         <div class="node-icon">▢</div>
                         <div class="node-info">
                             <div class="node-title">Box</div>
                             <div class="node-desc">Basic cube shape</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="cylinder">
+                    <div class="palette-node" draggable="true" data-type="cylinder" title="Creates a cylinder primitive.">
                         <div class="node-icon">◯</div>
                         <div class="node-info">
                             <div class="node-title">Cylinder</div>
                             <div class="node-desc">Column or pipe</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="sphere">
+                    <div class="palette-node" draggable="true" data-type="sphere" title="Creates a sphere primitive.">
                         <div class="node-icon">●</div>
                         <div class="node-info">
                             <div class="node-title">Sphere</div>
                             <div class="node-desc">Dome or ball</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="plane">
+                    <div class="palette-node" draggable="true" data-type="plane" title="Creates a plane primitive.">
                         <div class="node-icon">▬</div>
                         <div class="node-info">
                             <div class="node-title">Plane</div>
@@ -737,35 +791,35 @@
             <div class="sidebar-section">
                 <div class="section-title">Architecture</div>
                 <div class="node-palette">
-                    <div class="palette-node" draggable="true" data-type="wall">
+                    <div class="palette-node" draggable="true" data-type="wall" title="Creates a wall.">
                         <div class="node-icon">▯</div>
                         <div class="node-info">
                             <div class="node-title">Wall</div>
                             <div class="node-desc">Vertical partition</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="window">
+                    <div class="palette-node" draggable="true" data-type="window" title="Creates a window.">
                         <div class="node-icon">⬚</div>
                         <div class="node-info">
                             <div class="node-title">Window</div>
                             <div class="node-desc">Glass opening</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="door">
+                    <div class="palette-node" draggable="true" data-type="door" title="Creates a door.">
                         <div class="node-icon">▭</div>
                         <div class="node-info">
                             <div class="node-title">Door</div>
                             <div class="node-desc">Entry point</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="stairs">
+                    <div class="palette-node" draggable="true" data-type="stairs" title="Creates a flight of stairs.">
                         <div class="node-icon">≡</div>
                         <div class="node-info">
                             <div class="node-title">Stairs</div>
                             <div class="node-desc">Step sequence</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="roof">
+                    <div class="palette-node" draggable="true" data-type="roof" title="Creates a gabled roof.">
                         <div class="node-icon">△</div>
                         <div class="node-info">
                             <div class="node-title">Roof</div>
@@ -778,21 +832,21 @@
             <div class="sidebar-section">
                 <div class="section-title">Operations</div>
                 <div class="node-palette">
-                    <div class="palette-node" draggable="true" data-type="array">
+                    <div class="palette-node" draggable="true" data-type="array" title="Creates an array of the input geometry.">
                         <div class="node-icon">▦</div>
                         <div class="node-info">
                             <div class="node-title">Array</div>
                             <div class="node-desc">Repeat pattern</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="transform">
+                    <div class="palette-node" draggable="true" data-type="transform" title="Transforms the input geometry.">
                         <div class="node-icon">⤨</div>
                         <div class="node-info">
                             <div class="node-title">Transform</div>
                             <div class="node-desc">Move/rotate/scale</div>
                         </div>
                     </div>
-                    <div class="palette-node" draggable="true" data-type="material">
+                    <div class="palette-node" draggable="true" data-type="material" title="Applies a material to the input geometry.">
                         <div class="node-icon">🎨</div>
                         <div class="node-info">
                             <div class="node-title">Material</div>
@@ -805,7 +859,7 @@
             <div class="sidebar-section">
                 <div class="section-title">Output</div>
                 <div class="node-palette">
-                    <div class="palette-node" draggable="true" data-type="output">
+                    <div class="palette-node" draggable="true" data-type="output" title="Outputs the final geometry to the 3D viewport.">
                         <div class="node-icon">→</div>
                         <div class="node-info">
                             <div class="node-title">Output</div>
@@ -892,6 +946,9 @@
             <div>ArchViz Studio v1.0</div>
         </div>
     </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="context-menu"></div>
 
     <script>
         // THREE.JS Scene Setup
@@ -1059,6 +1116,14 @@
         const connectionsSvg = document.getElementById('connections-svg');
 
         const nodeTemplates = {
+            'number': {
+                title: 'Number',
+                icon: '#',
+                inputs: [],
+                outputs: ['Value'],
+                params: { value: 1 },
+                color: '#18a'
+            },
             'box': {
                 title: 'Box',
                 icon: '▢',
@@ -1162,6 +1227,14 @@
                 outputs: [],
                 params: {},
                 color: '#00e5ff'
+            },
+            'subtract': {
+                title: 'Subtract',
+                icon: '−',
+                inputs: ['A', 'B'],
+                outputs: ['Result'],
+                params: {},
+                color: '#e67e22'
             }
         };
 
@@ -1217,15 +1290,18 @@
             let paramsHTML = '';
             if (node.params && Object.keys(node.params).length > 0) {
                 Object.entries(node.params).forEach(([key, value]) => {
-                    const inputType = typeof value === 'number' ? 'number' : 
+                    const inputType = typeof value === 'number' ? 'number' :
                                     key === 'color' ? 'color' : 'text';
                     const step = typeof value === 'number' && value < 1 ? '0.1' : '1';
-                    
+
                     paramsHTML += `
                         <div class="node-param">
-                            <div class="param-label">${key}</div>
-                            <input type="${inputType}" 
-                                   class="param-input" 
+                            <div class="port input">
+                                <div class="port-dot" data-node="${node.id}" data-port="${key}" data-type="param-input"></div>
+                                <div class="param-label">${key}</div>
+                            </div>
+                            <input type="${inputType}"
+                                   class="param-input"
                                    value="${value}"
                                    step="${step}"
                                    data-param="${key}"
@@ -1328,7 +1404,7 @@
 
         function handlePortClick(dot) {
             const nodeId = parseInt(dot.dataset.node);
-            const port = parseInt(dot.dataset.port);
+            const port = dot.dataset.port;
             const type = dot.dataset.type;
 
             if (!connectingFrom) {
@@ -1336,15 +1412,22 @@
                 dot.style.transform = 'scale(1.5)';
             } else {
                 if (connectingFrom.type !== type && connectingFrom.nodeId !== nodeId) {
-                    const connection = connectingFrom.type === 'output' 
+                    const connection = connectingFrom.type === 'output'
                         ? { from: connectingFrom, to: { nodeId, port, type } }
                         : { from: { nodeId, port, type }, to: connectingFrom };
                     
-                    connections.push(connection);
+                    // Prevent multiple connections to the same input port
+                    if (!connections.some(c => c.to.nodeId === connection.to.nodeId && c.to.port === connection.to.port)) {
+                        connections.push(connection);
+                        if(connection.to.type === 'param-input') {
+                            const inputEl = document.querySelector(`#node-${connection.to.nodeId} [data-param="${connection.to.port}"]`);
+                            if(inputEl) inputEl.disabled = true;
+                        }
+                    }
                     updateConnections();
                     updateStats();
                 }
-                
+
                 document.querySelectorAll('.port-dot').forEach(d => {
                     d.style.transform = '';
                 });
@@ -1355,15 +1438,18 @@
         function updateConnections() {
             connectionsSvg.innerHTML = '';
             
-            connections.forEach((conn) => {
+            connections.forEach((conn, index) => {
                 const fromNode = nodes.find(n => n.id === conn.from.nodeId);
                 const toNode = nodes.find(n => n.id === conn.to.nodeId);
                 
                 if (!fromNode || !toNode) return;
 
-                const fromEl = document.querySelector(`#node-${fromNode.id} .port.output .port-dot[data-port="${conn.from.port}"]`);
-                const toEl = document.querySelector(`#node-${toNode.id} .port.input .port-dot[data-port="${conn.to.port}"]`);
-                
+                const fromSelector = `#node-${fromNode.id} .port.output .port-dot[data-port="${conn.from.port}"]`;
+                const toSelector = `#node-${toNode.id} .port-dot[data-port="${conn.to.port}"]`;
+
+                const fromEl = document.querySelector(fromSelector);
+                const toEl = document.querySelector(toSelector);
+
                 if (!fromEl || !toEl) return;
 
                 const fromRect = fromEl.getBoundingClientRect();
@@ -1380,7 +1466,20 @@
 
                 const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 path.setAttribute('class', 'connection-path');
+                if (selectedNode && (conn.from.nodeId === selectedNode.id || conn.to.nodeId === selectedNode.id)) {
+                    path.classList.add('selected');
+                }
                 path.setAttribute('d', `M ${x1} ${y1} C ${x1 + controlOffset} ${y1}, ${x2 - controlOffset} ${y2}, ${x2} ${y2}`);
+                path.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    connections.splice(index, 1);
+                    if(conn.to.type === 'param-input') {
+                        const inputEl = document.querySelector(`#node-${conn.to.nodeId} [data-param="${conn.to.port}"]`);
+                        if(inputEl) inputEl.disabled = false;
+                    }
+                    updateConnections();
+                    updateStats();
+                });
                 connectionsSvg.appendChild(path);
             });
         }
@@ -1410,6 +1509,7 @@
                 nodeEl.classList.add('selected');
             }
             showNodeProperties(node);
+            updateConnections();
         }
 
         function showNodeProperties(node) {
@@ -1493,12 +1593,52 @@
             }
         }
 
-        // Canvas panning
+        // Canvas panning and context menu
         canvasContainer.addEventListener('mousedown', (e) => {
             if ((e.target === canvasContainer || e.target === canvas || e.target === connectionsSvg) && e.button === 0) {
                 isPanning = true;
                 panStart = { x: e.clientX - canvasOffset.x, y: e.clientY - canvasOffset.y };
                 canvas.classList.add('panning');
+            }
+        });
+
+        canvasContainer.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const contextMenu = document.getElementById('context-menu');
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.clientX}px`;
+            contextMenu.style.top = `${e.clientY}px`;
+            populateContextMenu();
+        });
+
+        function populateContextMenu() {
+            const contextMenu = document.getElementById('context-menu');
+            let menuHTML = '';
+            for (const type in nodeTemplates) {
+                const template = nodeTemplates[type];
+                menuHTML += `
+                    <div class="context-menu-item" onclick="addNodeFromContextMenu('${type}')">
+                        <span class="context-menu-icon">${template.icon}</span>
+                        <span>${template.title}</span>
+                    </div>
+                `;
+            }
+            contextMenu.innerHTML = menuHTML;
+        }
+
+        function addNodeFromContextMenu(type) {
+            const contextMenu = document.getElementById('context-menu');
+            const rect = canvasContainer.getBoundingClientRect();
+            const x = (parseInt(contextMenu.style.left, 10) - rect.left - canvasOffset.x) / zoom;
+            const y = (parseInt(contextMenu.style.top, 10) - rect.top - canvasOffset.y) / zoom;
+            createNode(type, x, y);
+            contextMenu.style.display = 'none';
+        }
+
+        document.addEventListener('click', (e) => {
+            const contextMenu = document.getElementById('context-menu');
+            if (contextMenu.style.display === 'block') {
+                contextMenu.style.display = 'none';
             }
         });
 
@@ -1573,17 +1713,33 @@
                 }
 
                 // Get inputs
-                const inputConnections = connections.filter(c => c.to.nodeId === node.id);
+                const inputConnections = connections.filter(c => c.to.nodeId === node.id && c.to.type === 'input');
                 const inputs = inputConnections.map(conn => {
                     const sourceNode = nodes.find(n => n.id === conn.from.nodeId);
                     return sourceNode ? executeNode(sourceNode) : null;
                 });
 
+                // Get params from connections or local values
+                const p = {};
+                if(node.params) {
+                    for(const key in node.params) {
+                        const paramConnection = connections.find(c => c.to.nodeId === node.id && c.to.port === key);
+                        if(paramConnection) {
+                            const sourceNode = nodes.find(n => n.id === paramConnection.from.nodeId);
+                            p[key] = sourceNode ? executeNode(sourceNode) : node.params[key];
+                        } else {
+                            p[key] = node.params[key];
+                        }
+                    }
+                }
+
                 // Execute based on type
                 let result = null;
-                const p = node.params || {};
 
                 switch(node.type) {
+                    case 'number':
+                        result = p.value || 0;
+                        break;
                     case 'box':
                         const boxGeom = new THREE.BoxGeometry(p.width || 5, p.height || 5, p.depth || 5);
                         const boxMat = new THREE.MeshStandardMaterial({ 
@@ -1824,6 +1980,13 @@
 
                     case 'output':
                         result = inputs[0] || null;
+                        break;
+                    case 'subtract':
+                        if (inputs[0] && inputs[1]) {
+                            const csg = new ThreeCSG();
+                            csg.subtract(inputs[0], inputs[1]);
+                            result = csg.toMesh();
+                        }
                         break;
                 }
 
