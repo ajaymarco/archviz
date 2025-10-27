@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ArchViz Studio - Node-Based Architecture Modeler</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three-csg-ts@3.1.13/lib/three-csg.js"></script>
+    <script type="module">
+        import { CSG } from "https://cdn.jsdelivr.net/npm/three-csg-ts@3.2.0/lib/esm/CSG.js";
+        window.ThreeCSG = CSG;
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.js"></script>
     <style>
         * {
@@ -1324,7 +1327,7 @@
             'transform': {
                 title: 'Transform',
                 icon: '⤨',
-                inputs: ['Geometry'],
+                inputs: ['Geometry', 'Transform'],
                 outputs: ['Geometry'],
                 params: { x: 0, y: 0, z: 0, rotX: 0, rotY: 0, rotZ: 0, scale: 1 },
                 color: '#f76707'
@@ -1896,6 +1899,47 @@
             document.getElementById('connection-count').textContent = connections.length;
         }
 
+        function topologicalSort(nodes, connections) {
+            const inDegree = new Map(nodes.map(node => [node.id, 0]));
+            const adj = new Map(nodes.map(node => [node.id, []]));
+
+            for (const conn of connections) {
+                const from = conn.from.nodeId;
+                const to = conn.to.nodeId;
+                if (adj.has(from) && inDegree.has(to)) {
+                    adj.get(from).push(to);
+                    inDegree.set(to, inDegree.get(to) + 1);
+                }
+            }
+
+            const queue = nodes.filter(node => inDegree.get(node.id) === 0).map(node => node.id);
+            const sorted = [];
+
+            while (queue.length > 0) {
+                const u = queue.shift();
+                const node = nodes.find(n => n.id === u);
+                sorted.push(node);
+
+                if (adj.has(u)) {
+                    for (const v of adj.get(u)) {
+                        if (inDegree.has(v)) {
+                            inDegree.set(v, inDegree.get(v) - 1);
+                            if (inDegree.get(v) === 0) {
+                                queue.push(v);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (sorted.length !== nodes.length) {
+                console.error("Cycle detected in graph");
+                return null; // Cycle detected
+            }
+
+            return sorted;
+        }
+
         // Caching and Execution Logic
         async function getNodeStateHash(node, executedOutputs) {
             const inputs = connections.filter(c => c.to.nodeId === node.id);
@@ -1958,6 +2002,19 @@
                 }
             }
 
+            // If no output node was used, render all un-connected geometry
+            if (sceneObjects.length === 0) {
+                for (const result of executedOutputs.values()) {
+                    if (result && result.isObject3D) {
+                        const isUsedAsInput = connections.some(c => c.from.nodeId === result.userData.nodeId);
+                        if (!isUsedAsInput) {
+                            scene.add(result);
+                            sceneObjects.push(result);
+                        }
+                    }
+                }
+            }
+
             updateViewportStats();
             updateGeometryList();
         }
@@ -1971,21 +2028,17 @@
                     setTimeout(() => nodeEl.classList.remove('executing'), 600);
                 }
 
-                // Get inputs
+                // Get inputs from already executed nodes
                 const inputConnections = connections.filter(c => c.to.nodeId === node.id && c.to.type === 'input');
-                const inputs = inputConnections.map(conn => {
-                    const sourceNode = nodes.find(n => n.id === conn.from.nodeId);
-                    return sourceNode ? executeNode(sourceNode) : null;
-                });
+                const inputs = inputConnections.map(conn => executedOutputs.get(conn.from.nodeId));
 
                 // Get params from connections or local values
                 const p = {};
-                if(node.params) {
-                    for(const key in node.params) {
+                if (node.params) {
+                    for (const key in node.params) {
                         const paramConnection = connections.find(c => c.to.nodeId === node.id && c.to.port === key);
-                        if(paramConnection) {
-                            const sourceNode = nodes.find(n => n.id === paramConnection.from.nodeId);
-                            p[key] = sourceNode ? executeNode(sourceNode) : node.params[key];
+                        if (paramConnection) {
+                            p[key] = executedOutputs.get(paramConnection.from.nodeId);
                         } else {
                             p[key] = node.params[key];
                         }
@@ -2356,36 +2409,7 @@
                 if (result && result.isObject3D) {
                     result.userData.nodeId = node.id;
                 }
-
-                executed.set(node.id, result);
                 return result;
-            }
-
-            // Execute all output nodes
-            const outputNodes = nodes.filter(n => n.type === 'output');
-            if (outputNodes.length > 0) {
-                outputNodes.forEach(node => {
-                    const result = executeNode(node);
-                    if (result) {
-                        scene.add(result);
-                        sceneObjects.push(result);
-                    }
-                });
-            } else {
-                // Execute standalone nodes
-                nodes.forEach(node => {
-                    if (!executed.has(node.id) && (!node.inputs || node.inputs.length === 0)) {
-                        const result = executeNode(node);
-                        if (result) {
-                            scene.add(result);
-                            sceneObjects.push(result);
-                        }
-                    }
-                });
-            }
-
-            updateViewportStats();
-            updateGeometryList();
         }
 
         function updateGeometryList() {
