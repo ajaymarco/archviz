@@ -882,6 +882,33 @@
                             <div class="node-desc">Create 3D from 2D</div>
                         </div>
                     </div>
+                    <div class="palette-node" draggable="true" data-type="merge" title="Merges multiple geometries into one.">
+                        <div class="node-icon">⧉</div>
+                        <div class="node-info">
+                            <div class="node-title">Merge</div>
+                            <div class="node-desc">Combine geometry streams</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">Data</div>
+                <div class="node-palette">
+                    <div class="palette-node" draggable="true" data-type="vector" title="Creates a 3D vector.">
+                        <div class="node-icon">V</div>
+                        <div class="node-info">
+                            <div class="node-title">Vector</div>
+                            <div class="node-desc">X, Y, Z coordinates</div>
+                        </div>
+                    </div>
+                    <div class="palette-node" draggable="true" data-type="compose_transform" title="Creates a transform from vectors.">
+                        <div class="node-icon">T</div>
+                        <div class="node-info">
+                            <div class="node-title">Compose Transform</div>
+                            <div class="node-desc">Position, rotation, scale</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1196,6 +1223,7 @@
         let selectedNode = null;
         let connectingFrom = null;
         let canvasOffset = { x: 0, y: 0 };
+        let nodeCache = new Map();
         let zoom = 1;
         let isPanning = false;
         let panStart = { x: 0, y: 0 };
@@ -1248,9 +1276,9 @@
             'wall': {
                 title: 'Wall',
                 icon: '▯',
-                inputs: [],
+                inputs: ['Curve'],
                 outputs: ['Geometry'],
-                params: { length: 10, height: 3, thickness: 0.2, x: 0, y: 1.5, z: 0 },
+                params: { height: 3, thickness: 0.2 },
                 color: '#adb5bd'
             },
             'window': {
@@ -1356,6 +1384,31 @@
                 outputs: ['Geometry'],
                 params: { height: 3 },
                 color: '#1abc9c'
+            },
+            'vector': {
+                title: 'Vector',
+                icon: 'V',
+                inputs: [],
+                outputs: ['Vector3'],
+                params: { x: 0, y: 0, z: 0 },
+                color: '#f39c12'
+            },
+            'compose_transform': {
+                title: 'Compose Transform',
+                icon: 'T',
+                inputs: ['Translation', 'Rotation', 'Scale'],
+                outputs: ['Transform'],
+                params: {},
+                color: '#f39c12'
+            },
+            'merge': {
+                title: 'Merge',
+                icon: '⧉',
+                inputs: ['Geometry 1', 'Geometry 2'],
+                outputs: ['Geometry'],
+                params: {},
+                color: '#20c997',
+                dynamicInputs: true
             }
         };
 
@@ -1470,6 +1523,17 @@
                 </div>
             `;
 
+            if (node.dynamicInputs) {
+                const addButton = document.createElement('button');
+                addButton.textContent = '+ Add Input';
+                addButton.className = 'btn';
+                addButton.style.width = '100%';
+                addButton.style.marginTop = '10px';
+                addButton.onclick = () => addDynamicInput(node.id);
+                const body = nodeEl.querySelector('.node-body');
+                body.appendChild(addButton);
+            }
+
             canvas.appendChild(nodeEl);
             makeNodeDraggable(nodeEl, node);
 
@@ -1556,6 +1620,20 @@
             }
         }
 
+        function addDynamicInput(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                const newPortIndex = node.inputs.length;
+                node.inputs.push(`Geometry ${newPortIndex + 1}`);
+
+                const nodeEl = document.getElementById(`node-${nodeId}`);
+                nodeEl.remove();
+                renderNode(node);
+                updateConnections();
+                nodeCache.clear();
+            }
+        }
+
         function updateConnections() {
             connectionsSvg.innerHTML = '';
             
@@ -1598,6 +1676,7 @@
                         const inputEl = document.querySelector(`#node-${conn.to.nodeId} [data-param="${conn.to.port}"]`);
                         if(inputEl) inputEl.disabled = false;
                     }
+                    nodeCache.clear(); // Invalidate cache on connection change
                     updateConnections();
                     updateStats();
                 });
@@ -1610,11 +1689,7 @@
             if (node && node.params) {
                 if (inputType === 'file') {
                     const file = event.target.files[0];
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        node.params[paramName] = e.target.result;
-                    };
-                    reader.readAsText(file);
+                    node.params[paramName] = file; // Store the file object directly
                 } else if (inputType === 'number') {
                     node.params[paramName] = parseFloat(value) || 0;
                 } else {
@@ -1624,6 +1699,7 @@
                 if (selectedNode && selectedNode.id === nodeId) {
                     showNodeProperties(node);
                 }
+                nodeCache.clear(); // Invalidate cache on param change
             }
         }
 
@@ -1820,9 +1896,29 @@
             document.getElementById('connection-count').textContent = connections.length;
         }
 
-        // Generate 3D model from node graph
-        function generateModel() {
-            // Clear existing objects
+        // Caching and Execution Logic
+        async function getNodeStateHash(node, executedOutputs) {
+            const inputs = connections.filter(c => c.to.nodeId === node.id);
+            const inputHashes = await Promise.all(inputs.map(async conn => {
+                const sourceNode = nodes.find(n => n.id === conn.from.nodeId);
+                return sourceNode ? executedOutputs.get(sourceNode.id) : null;
+            }));
+
+            // For file inputs, we need a unique identifier like file name + size + last modified
+            const params = {};
+            for (const key in node.params) {
+                if (node.params[key] instanceof File) {
+                    const file = node.params[key];
+                    params[key] = `${file.name}-${file.size}-${file.lastModified}`;
+                } else {
+                    params[key] = node.params[key];
+                }
+            }
+
+            return JSON.stringify({ params, inputs: inputHashes });
+        }
+
+        async function generateModel() {
             sceneObjects.forEach(obj => {
                 scene.remove(obj);
                 if (obj.geometry) obj.geometry.dispose();
@@ -1836,12 +1932,37 @@
             });
             sceneObjects = [];
 
-            const executed = new Map();
+            const executedOutputs = new Map();
+            const sortedNodes = topologicalSort(nodes, connections);
 
-            function executeNode(node) {
-                if (executed.has(node.id)) {
-                    return executed.get(node.id);
+            if (!sortedNodes) {
+                console.error("Execution halted due to cycle in graph.");
+                return;
+            }
+
+            for (const node of sortedNodes) {
+                const hash = await getNodeStateHash(node, executedOutputs);
+
+                if (nodeCache.has(hash)) {
+                    executedOutputs.set(node.id, nodeCache.get(hash));
+                    continue;
                 }
+
+                const result = await executeNode(node, executedOutputs);
+                executedOutputs.set(node.id, result);
+                nodeCache.set(hash, result);
+
+                if (node.type === 'output' && result) {
+                    scene.add(result);
+                    sceneObjects.push(result);
+                }
+            }
+
+            updateViewportStats();
+            updateGeometryList();
+        }
+
+        async function executeNode(node, executedOutputs) {
 
                 // Animate node
                 const nodeEl = document.getElementById(`node-${node.id}`);
@@ -1927,16 +2048,22 @@
                         break;
 
                     case 'wall':
-                        const wallGeom = new THREE.BoxGeometry(p.length || 10, p.height || 3, p.thickness || 0.2);
-                        const wallMat = new THREE.MeshStandardMaterial({ 
-                            color: node.color || 0xcccccc, 
-                            metalness: 0.1, 
-                            roughness: 0.9 
-                        });
-                        result = new THREE.Mesh(wallGeom, wallMat);
-                        result.position.set(p.x || 0, p.y || 1.5, p.z || 0);
-                        break;
+                        if (inputs[0]) {
+                            const curve = inputs[0];
+                            const wallShape = new THREE.Shape();
+                            const thickness = p.thickness || 0.2;
+                            wallShape.moveTo(0, -thickness / 2);
+                            wallShape.lineTo(0, thickness / 2);
 
+                            const extrudeSettings = {
+                                steps: curve.points.length * 2,
+                                extrudePath: curve
+                            };
+                            const wallGeometry = new THREE.ExtrudeGeometry(wallShape, extrudeSettings);
+                            const wallMaterial = new THREE.MeshStandardMaterial({ color: node.color || 0xcccccc });
+                            result = new THREE.Mesh(wallGeometry, wallMaterial);
+                        }
+                        break;
                     case 'window':
                         const windowGroup = new THREE.Group();
                         const frameThickness = 0.05;
@@ -2090,16 +2217,42 @@
                     case 'transform':
                         if (inputs[0]) {
                             result = inputs[0].clone();
-                            result.position.set(p.x || 0, p.y || 0, p.z || 0);
-                            result.rotation.set(
-                                (p.rotX || 0) * Math.PI / 180, 
-                                (p.rotY || 0) * Math.PI / 180, 
-                                (p.rotZ || 0) * Math.PI / 180
-                            );
-                            result.scale.setScalar(p.scale || 1);
+                            if (inputs[1] && typeof inputs[1] === 'object') { // Transform input
+                                const t = inputs[1];
+                                if (t.translation) result.position.copy(t.translation);
+                                if (t.rotation) result.rotation.set(t.rotation.x, t.rotation.y, t.rotation.z);
+                                if (t.scale) result.scale.copy(t.scale);
+                            } else { // Manual params
+                                result.position.set(p.x || 0, p.y || 0, p.z || 0);
+                                result.rotation.set(
+                                    (p.rotX || 0) * Math.PI / 180,
+                                    (p.rotY || 0) * Math.PI / 180,
+                                    (p.rotZ || 0) * Math.PI / 180
+                                );
+                                result.scale.setScalar(p.scale || 1);
+                            }
                         }
                         break;
+                    case 'vector':
+                        result = new THREE.Vector3(p.x || 0, p.y || 0, p.z || 0);
+                        break;
 
+                    case 'compose_transform':
+                        result = {
+                            translation: inputs[0] || new THREE.Vector3(),
+                            rotation: inputs[1] ? new THREE.Euler(inputs[1].x * Math.PI / 180, inputs[1].y * Math.PI / 180, inputs[1].z * Math.PI / 180) : new THREE.Euler(),
+                            scale: inputs[2] || new THREE.Vector3(1, 1, 1)
+                        };
+                        break;
+                    case 'merge':
+                        const mergeGroup = new THREE.Group();
+                        inputs.forEach(input => {
+                            if (input) {
+                                mergeGroup.add(input.clone());
+                            }
+                        });
+                        result = mergeGroup;
+                        break;
                     case 'material':
                         if (inputs[0]) {
                             result = inputs[0].clone();
@@ -2161,33 +2314,42 @@
                         }
                         break;
                     case 'load_dxf':
-                        if (p.file) {
-                            const parser = new DxfParser();
-                            const dxf = parser.parseSync(p.file);
-                            const group = new THREE.Group();
-                            if(dxf) {
-                                for (const entity of dxf.entities) {
-                                    if (entity.type === 'LINE') {
-                                        const material = new THREE.LineBasicMaterial({ color: 0xffffff });
-                                        const points = [];
-                                        points.push(new THREE.Vector3(entity.vertices[0].x, entity.vertices[0].y, 0));
-                                        points.push(new THREE.Vector3(entity.vertices[1].x, entity.vertices[1].y, 0));
-                                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                                        const line = new THREE.Line(geometry, material);
-                                        group.add(line);
-                                    } else if (entity.type === 'LWPOLYLINE') {
-                                        const material = new THREE.LineBasicMaterial({ color: 0xffffff });
-                                        const points = entity.vertices.map(v => new THREE.Vector3(v.x, v.y, 0));
-                                        if (entity.closed) {
-                                            points.push(points[0].clone());
+                         if (p.file) {
+                            try {
+                                const fileContent = await p.file.text();
+                                const parser = new DxfParser();
+                                const dxf = parser.parseSync(fileContent);
+                                if (dxf) {
+                                    const points = [];
+                                    // Simple stitch logic: assumes segments are somewhat ordered
+                                    dxf.entities.forEach(entity => {
+                                        if (entity.type === 'LINE') {
+                                            if (points.length === 0) {
+                                                points.push(new THREE.Vector3(entity.vertices[0].x, entity.vertices[0].y, 0));
+                                                points.push(new THREE.Vector3(entity.vertices[1].x, entity.vertices[1].y, 0));
+                                            } else {
+                                                const lastPoint = points[points.length - 1];
+                                                const p1 = new THREE.Vector3(entity.vertices[0].x, entity.vertices[0].y, 0);
+                                                const p2 = new THREE.Vector3(entity.vertices[1].x, entity.vertices[1].y, 0);
+                                                if (lastPoint.distanceTo(p1) < 0.1) {
+                                                    points.push(p2);
+                                                } else {
+                                                    points.push(p1);
+                                                    points.push(p2);
+                                                }
+                                            }
+                                        } else if (entity.type === 'LWPOLYLINE') {
+                                            entity.vertices.forEach(v => points.push(new THREE.Vector3(v.x, v.y, 0)));
                                         }
-                                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                                        const line = new THREE.Line(geometry, material);
-                                        group.add(line);
-                                    }
+                                    });
+                                    result = new THREE.CatmullRomCurve3(points);
+                                } else {
+                                    result = null;
                                 }
+                            } catch (err) {
+                                console.error("Error parsing DXF file:", err);
+                                result = null;
                             }
-                            result = group;
                         }
                         break;
                 }
