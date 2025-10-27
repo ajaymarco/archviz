@@ -2002,6 +2002,19 @@
                 }
             }
 
+            // If no output node was used, render all un-connected geometry
+            if (sceneObjects.length === 0) {
+                for (const result of executedOutputs.values()) {
+                    if (result && result.isObject3D) {
+                        const isUsedAsInput = connections.some(c => c.from.nodeId === result.userData.nodeId);
+                        if (!isUsedAsInput) {
+                            scene.add(result);
+                            sceneObjects.push(result);
+                        }
+                    }
+                }
+            }
+
             updateViewportStats();
             updateGeometryList();
         }

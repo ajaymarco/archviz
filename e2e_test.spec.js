@@ -88,3 +88,17 @@ test('DXF to Wall and Procedural Transform Workflow', async ({ page }) => {
   await page.waitForTimeout(1000);
   await expect(page.locator('#viewport')).toHaveScreenshot('procedural-transform-test.png');
 });
+
+test('Automatic rendering of unconnected nodes', async ({ page }) => {
+  // Navigate to the local HTML file
+  await page.goto(`file://${path.resolve(__dirname, 'index.html')}`);
+
+  // Add a Box node
+  await page.locator('#canvas-container').click({ button: 'right', position: { x: 100, y: 100 } });
+  await page.locator('#context-menu').getByText('Box').click();
+
+  // Generate the model and take a screenshot
+  await page.getByRole('button', { name: '▶ Generate Model' }).click();
+  await page.waitForTimeout(1000); // Wait for rendering
+  await expect(page.locator('#viewport')).toHaveScreenshot('unconnected-node-test.png');
+});
