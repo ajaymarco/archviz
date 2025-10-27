@@ -875,6 +875,13 @@
                             <div class="node-desc">Boolean intersection</div>
                         </div>
                     </div>
+                    <div class="palette-node" draggable="true" data-type="extrude" title="Extrudes a 2D geometry into a 3D shape.">
+                        <div class="node-icon">⇧</div>
+                        <div class="node-info">
+                            <div class="node-title">Extrude</div>
+                            <div class="node-desc">Create 3D from 2D</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1341,6 +1348,14 @@
                 outputs: ['Geometry'],
                 params: { file: null },
                 color: '#9b59b6'
+            },
+            'extrude': {
+                title: 'Extrude',
+                icon: '⇧',
+                inputs: ['Geometry'],
+                outputs: ['Geometry'],
+                params: { height: 3 },
+                color: '#1abc9c'
             }
         };
 
@@ -2125,6 +2140,26 @@
                             result = csg.toMesh();
                         }
                         break;
+                    case 'extrude':
+                        if (inputs[0]) {
+                            const group = new THREE.Group();
+                            inputs[0].children.forEach(line => {
+                                const points = line.geometry.attributes.position.array;
+                                const shape = new THREE.Shape();
+                                shape.moveTo(points[0], points[1]);
+                                for (let i = 2; i < points.length; i += 3) {
+                                    shape.lineTo(points[i], points[i+1]);
+                                }
+
+                                const extrudeSettings = { depth: p.height || 3, bevelEnabled: false };
+                                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                                const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+                                const mesh = new THREE.Mesh(geometry, material);
+                                group.add(mesh);
+                            });
+                            result = group;
+                        }
+                        break;
                     case 'load_dxf':
                         if (p.file) {
                             const parser = new DxfParser();
@@ -2137,6 +2172,15 @@
                                         const points = [];
                                         points.push(new THREE.Vector3(entity.vertices[0].x, entity.vertices[0].y, 0));
                                         points.push(new THREE.Vector3(entity.vertices[1].x, entity.vertices[1].y, 0));
+                                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                                        const line = new THREE.Line(geometry, material);
+                                        group.add(line);
+                                    } else if (entity.type === 'LWPOLYLINE') {
+                                        const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+                                        const points = entity.vertices.map(v => new THREE.Vector3(v.x, v.y, 0));
+                                        if (entity.closed) {
+                                            points.push(points[0].clone());
+                                        }
                                         const geometry = new THREE.BufferGeometry().setFromPoints(points);
                                         const line = new THREE.Line(geometry, material);
                                         group.add(line);
