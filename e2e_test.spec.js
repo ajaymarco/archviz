@@ -3,7 +3,8 @@ const path = require('path');
 
 test('DXF to Wall and Procedural Transform Workflow', async ({ page }) => {
   // Navigate to the local HTML file
-  await page.goto(`file://${path.resolve(__dirname, 'index.html')}`);
+  page.on('console', msg => console.log(msg.text()));
+  await page.goto('http://localhost:8000/index.html');
 
   // 1. Create the DXF to Wall workflow
   // Add a "Load DXF" node
@@ -91,7 +92,8 @@ test('DXF to Wall and Procedural Transform Workflow', async ({ page }) => {
 
 test('Automatic rendering of unconnected nodes', async ({ page }) => {
   // Navigate to the local HTML file
-  await page.goto(`file://${path.resolve(__dirname, 'index.html')}`);
+  await page.goto('http://localhost:8000/index.html');
+  await page.waitForLoadState('networkidle');
 
   // Add a Box node
   await page.locator('#canvas-container').click({ button: 'right', position: { x: 100, y: 100 } });
