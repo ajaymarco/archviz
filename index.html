@@ -3,52 +3,325 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArchViz Pro</title>
+    <title>ArchViz Pro - Professional Architecture Visualization</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="project-manager">
-        <header>
-            <h1>ArchViz Pro</h1>
-        </header>
-        <main>
-            <button id="new-project-btn">+ Create New Project</button>
-            <div id="project-list">
-                <!-- Project cards will be added here -->
-            </div>
-        </main>
-    </div>
-
-    <div id="editor" class="hidden">
-        <div id="editor-header">
-            <button id="back-to-projects-btn">&lt; Projects</button>
-            <div id="mode-toolbar">
-                <button class="mode-btn active" data-mode="model">Model</button>
-                <button class="mode-btn" data-mode="visualise">Visualise</button>
-            <button class="mode-btn" data-mode="render">Render</button>
-        </div>
-        <div id="sidebar">
-            <div class="sidebar-group" id="model-tools">
-                <button class="tool-btn" data-tool="line">Draw Line</button>
-                <button class="tool-btn" data-tool="rectangle">Draw Rectangle</button>
-            </div>
-            <div class="sidebar-group">
-                <input type="file" id="dxf-input" accept=".dxf" style="display: none;">
-                <button id="load-dxf-btn">Load DXF</button>
+    <div class="workspace">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <a href="project-manager.html" class="logo">ARCHVIZ PRO</a>
+            <div class="top-actions">
+                <div class="mode-tabs">
+                    <button class="mode-tab active" data-mode="model">Model</button>
+                    <button class="mode-tab" data-mode="visualize">Visualize</button>
+                    <button class="mode-tab" data-mode="render">Render</button>
+                </div>
+                <button class="action-btn secondary" id="save-btn">Save</button>
+                <button class="action-btn" id="export-btn">Export</button>
             </div>
         </div>
-        <div id="viewport-container"></div>
+
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <div class="panel-section">
+                <div class="panel-title">Modeling Tools</div>
+                <div class="tool-grid">
+                    <div class="tool-item active" data-tool="wall" title="Wall (1)">
+                        <div class="tool-icon">▭</div>
+                        <div class="tool-label">Wall</div>
+                    </div>
+                    <div class="tool-item" data-tool="floor" title="Floor (2)">
+                        <div class="tool-icon">⬜</div>
+                        <div class="tool-label">Floor</div>
+                    </div>
+                    <div class="tool-item" data-tool="door" title="Door (3)">
+                        <div class="tool-icon">▯</div>
+                        <div class="tool-label">Door</div>
+                    </div>
+                    <div class="tool-item" data-tool="window" title="Window (4)">
+                        <div class="tool-icon">▢</div>
+                        <div class="tool-label">Window</div>
+                    </div>
+                    <div class="tool-item" data-tool="stairs" title="Stairs (5)">
+                        <div class="tool-icon">⚏</div>
+                        <div class="tool-label">Stairs</div>
+                    </div>
+                    <div class="tool-item" data-tool="column" title="Column (6)">
+                        <div class="tool-icon">⬮</div>
+                        <div class="tool-label">Column</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Parametric</div>
+                <div class="tool-grid">
+                    <div class="tool-item" data-action="generate-room" title="Generate Room">
+                        <div class="tool-icon">🏠</div>
+                        <div class="tool-label">Room</div>
+                    </div>
+                    <div class="tool-item" data-action="generate-building" title="Generate Building">
+                        <div class="tool-icon">🏢</div>
+                        <div class="tool-label">Building</div>
+                    </div>
+                    <div class="tool-item" data-action="generate-facade" title="Generate Facade">
+                        <div class="tool-icon">🪟</div>
+                        <div class="tool-label">Facade</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                <div class="panel-section">
+                    <div class="panel-title">Import</div>
+                    <input type="file" id="dxf-input" accept=".dxf" style="display: none;">
+                    <button class="action-btn" id="load-dxf-btn">Load DXF</button>
+                </div>
+                <div class="panel-section" style="border-bottom: none; flex-shrink: 0;">
+                    <div class="panel-title">Object Library</div>
+                </div>
+                <div class="library-scroll">
+                    <div class="library-item" data-object="furniture-chair">
+                        <div class="library-icon">🪑</div>
+                        <div class="library-info">
+                            <div class="library-name">Modern Chair</div>
+                            <div class="library-meta">Furniture</div>
+                        </div>
+                    </div>
+                    <div class="library-item" data-object="furniture-table">
+                        <div class="library-icon">🛋️</div>
+                        <div class="library-info">
+                            <div class="library-name">Dining Table</div>
+                            <div class="library-meta">Furniture</div>
+                        </div>
+                    </div>
+                    <div class="library-item" data-object="lighting-lamp">
+                        <div class="library-icon">💡</div>
+                        <div class="library-info">
+                            <div class="library-name">Ceiling Lamp</div>
+                            <div class="library-meta">Lighting</div>
+                        </div>
+                    </div>
+                    <div class="library-item" data-object="vegetation-tree">
+                        <div class="library-icon">🌳</div>
+                        <div class="library-info">
+                            <div class="library-name">Tree</div>
+                            <div class="library-meta">Vegetation</div>
+                        </div>
+                    </div>
+                    <div class="library-item" data-object="vegetation-plant">
+                        <div class="library-icon">🌿</div>
+                        <div class="library-info">
+                            <div class="library-name">Indoor Plant</div>
+                            <div class="library-meta">Vegetation</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Viewport -->
+        <div class="viewport">
+            <canvas id="canvas"></canvas>
+
+            <!-- Stats Bar -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-label">Objects</div>
+                    <div class="stat-value" id="stat-objects">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Polygons</div>
+                    <div class="stat-value" id="stat-polygons">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">FPS</div>
+                    <div class="stat-value" id="stat-fps">60</div>
+                </div>
+            </div>
+
+            <!-- View Cube -->
+            <div class="view-cube">
+                <div class="cube-face" data-view="top-left"></div>
+                <div class="cube-face" data-view="top">T</div>
+                <div class="cube-face" data-view="top-right"></div>
+                <div class="cube-face" data-view="left">L</div>
+                <div class="cube-face center" data-view="perspective">◎</div>
+                <div class="cube-face" data-view="right">R</div>
+                <div class="cube-face" data-view="bottom-left"></div>
+                <div class="cube-face" data-view="bottom">B</div>
+                <div class="cube-face" data-view="bottom-right"></div>
+            </div>
+
+            <!-- Viewport Controls -->
+            <div class="viewport-controls">
+                <div class="control-group">
+                    <button class="control-btn active" data-action="toggle-grid" title="Grid (G)" id="grid-btn">⊞</button>
+                    <button class="control-btn" data-action="toggle-snap" title="Snap (S)" id="snap-btn">🧲</button>
+                    <button class="control-btn" data-action="toggle-measure" title="Measure (M)" id="measure-btn">📏</button>
+                </div>
+                <div class="control-group">
+                    <button class="control-btn" data-action="toggle-wireframe" title="Wireframe (W)">#</button>
+                    <button class="control-btn" data-action="toggle-xray" title="X-Ray (X)">👁</button>
+                    <button class="control-btn" data-action="reset-view" title="Reset View (Home)">↻</button>
+                </div>
+            </div>
+
+            <!-- Dimension Display -->
+            <div class="dimension-display" id="dimension-display">10.5m × 3.2m</div>
+
+            <!-- Snap Point -->
+            <div class="snap-point" id="snap-point"></div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <div class="properties-section" id="properties-section">
+                <div class="property-group">
+                    <h3>Transform</h3>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Position X</span>
+                            <span class="property-value" id="pos-x-val">0.00m</span>
+                        </div>
+                        <input type="range" class="property-slider" id="pos-x" min="-50" max="50" step="0.1" value="0">
+                    </div>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Position Y</span>
+                            <span class="property-value" id="pos-y-val">0.00m</span>
+                        </div>
+                        <input type="range" class="property-slider" id="pos-y" min="0" max="20" step="0.1" value="0">
+                    </div>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Position Z</span>
+                            <span class="property-value" id="pos-z-val">0.00m</span>
+                        </div>
+                        <input type="range" class="property-slider" id="pos-z" min="-50" max="50" step="0.1" value="0">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <h3>Dimensions</h3>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Width</span>
+                            <span class="property-value" id="width-val">5.00m</span>
+                        </div>
+                        <input type="range" class="property-slider" id="width" min="0.1" max="20" step="0.1" value="5">
+                    </div>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Height</span>
+                            <span class="property-value" id="height-val">3.00m</span>
+                        </div>
+                        <input type="range" class="property-slider" id="height" min="0.1" max="10" step="0.1" value="3">
+                    </div>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Depth</span>
+                            <span class="property-value" id="depth-val">0.20m</span>
+                        </div>
+                        <input type="range" class="property-slider" id="depth" min="0.1" max="5" step="0.1" value="0.2">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <h3>Material</h3>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Material Type</span>
+                        </div>
+                        <div class="color-swatch-grid">
+                            <div class="color-swatch active" style="background: linear-gradient(135deg, #ccc, #999);" data-material="concrete" title="Concrete"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #8b4513, #654321);" data-material="wood" title="Wood"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #87ceeb, rgba(135, 206, 235, 0.5));" data-material="glass" title="Glass"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #c0c0c0, #808080);" data-material="metal" title="Metal"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #696969, #2f4f4f);" data-material="stone" title="Stone"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #fff, #f5f5f5);" data-material="paint" title="Paint"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #daa520, #b8860b);" data-material="brass" title="Brass"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #8b0000, #cd5c5c);" data-material="brick" title="Brick"></div>
+                        </div>
+                    </div>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Roughness</span>
+                            <span class="property-value" id="roughness-val">0.70</span>
+                        </div>
+                        <input type="range" class="property-slider" id="roughness" min="0" max="1" step="0.01" value="0.7">
+                    </div>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Metalness</span>
+                            <span class="property-value" id="metalness-val">0.00</span>
+                        </div>
+                        <input type="range" class="property-slider" id="metalness" min="0" max="1" step="0.01" value="0">
+                    </div>
+                </div>
+
+                <div class="property-group">
+                    <h3>Lighting</h3>
+                    <div class="property-field">
+                        <div class="property-label">
+                            <span>Time of Day</span>
+                        </div>
+                        <div class="color-swatch-grid">
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #ffd89b, #19547b);" data-time="dawn" title="Dawn"></div>
+                            <div class="color-swatch active" style="background: linear-gradient(135deg, #87ceeb, #fff);" data-time="day" title="Day"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #ff6b6b, #feca57);" data-time="sunset" title="Sunset"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #2c3e50, #000);" data-time="night" title="Night"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ai-panel">
+                <div class="ai-input-container">
+                    <div class="ai-icon">✨</div>
+                    <input type="text" class="ai-input" id="ai-input" placeholder="Type command... (e.g., 'add window 2m wide')">
+                </div>
+                <div class="suggestion-chips">
+                    <div class="suggestion-chip" data-command="create room 8x6m">Create room</div>
+                    <div class="suggestion-chip" data-command="add windows">Add windows</div>
+                    <div class="suggestion-chip" data-command="apply wood material">Wood material</div>
+                    <div class="suggestion-chip" data-command="add lighting">Add lights</div>
+                    <div class="suggestion-chip" data-command="furnish room">Furnish</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Timeline -->
+        <div class="bottom-panel">
+            <div class="timeline-header">
+                <div class="panel-title" style="margin: 0;">History & Versions</div>
+                <div class="timeline-controls">
+                    <button class="timeline-btn" data-action="undo" title="Undo (Ctrl+Z)">↶</button>
+                    <button class="timeline-btn" data-action="redo" title="Redo (Ctrl+Y)">↷</button>
+                    <button class="timeline-btn" data-action="clear-history" title="Clear">🗑</button>
+                </div>
+            </div>
+            <div class="timeline-content" id="timeline-content">
+                <div class="timeline-item active">
+                    <div class="timeline-icon">🏁</div>
+                    <div class="timeline-label">Start</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-                "dxf-parser": "https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/+esm"
-            }
-        }
-    </script>
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>
